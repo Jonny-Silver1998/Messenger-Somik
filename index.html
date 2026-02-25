@@ -3,210 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro-Messenger</title>
+    <title>TG-Clone</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #e5ddd5; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #e4eaf5; height: 100vh; display: flex; overflow: hidden; }
         
-        /* Стили экранов */
-        #auth-screen, #profile-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 15px; background: white; }
-        #chat-screen { display: none; flex-direction: column; height: 100vh; }
+        /* Экраны */
+        #loading-screen, #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; background: white; position: absolute; z-index: 100; }
+        #app-screen { display: none; width: 100%; height: 100vh; }
         
-        /* Шапка и настройки профиля в чате */
-        #header { background: #075e54; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-        #profile-settings { display: none; background: #fff; padding: 15px; border-bottom: 1px solid #ccc; flex-direction: column; gap: 10px; }
+        /* Авторизация */
+        .auth-box { width: 300px; display: flex; flex-direction: column; gap: 10px; }
+        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; }
+        button { background: #3390ec; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background: #2b7bc5; }
         
-        /* Инпуты и кнопки */
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 8px; width: 250px; outline: none; }
-        button { background: #128C7E; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #075e54; }
-        .btn-small { padding: 5px 10px; font-size: 12px; }
+        /* Лейаут Telegram */
+        #sidebar { width: 300px; background: white; border-right: 1px solid #dfe1e5; display: flex; flex-direction: column; }
+        #chat-area { flex: 1; display: flex; flex-direction: column; background: #e4eaf5; }
         
-        /* Чат и сообщения */
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .msg-wrapper { display: flex; gap: 10px; align-items: flex-end; }
-        .msg-wrapper.mine { flex-direction: row-reverse; }
+        /* Сайдбар (левая часть) */
+        #my-profile { padding: 15px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        #search-box { padding: 10px; background: #f4f4f5; }
+        #search-box input { width: 100%; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; background: #fff; }
+        #user-list { flex: 1; overflow-y: auto; padding: 10px; }
         
-        .avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #ccc; }
-        .message { max-width: 60%; padding: 10px 14px; border-radius: 15px; font-size: 15px; position: relative; word-wrap: break-word; }
-        .mine .message { background: #dcf8c6; border-bottom-right-radius: 0; }
-        .others .message { background: white; border-bottom-left-radius: 0; }
-        .meta { font-size: 11px; color: gray; margin-bottom: 5px; font-weight: bold; }
+        .user-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .user-item:hover { background: #f4f4f5; }
+        .user-item .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #ccc; }
+        .user-info { display: flex; flex-direction: column; }
+        .user-name { font-weight: bold; font-size: 14px; }
+        .user-nick { font-size: 12px; color: #888; }
+
+        /* Окно чата (правая часть) */
+        #chat-header { padding: 15px 20px; background: white; border-bottom: 1px solid #dfe1e5; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        #messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        #message-input-area { padding: 15px; background: white; display: flex; gap: 10px; align-items: center; }
         
-        /* Ввод сообщения */
-        #input-area { background: #f0f0f0; padding: 15px; display: flex; gap: 10px; }
-        #input-area input { flex: 1; width: auto; border-radius: 20px; }
+        /* Сообщения */
+        .msg-row { display: flex; width: 100%; }
+        .msg-row.mine { justify-content: flex-end; }
+        .msg-bubble { max-width: 60%; padding: 10px 15px; border-radius: 15px; font-size: 15px; word-wrap: break-word; position: relative; }
+        .msg-row.others .msg-bubble { background: white; border-bottom-left-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg-row.mine .msg-bubble { background: #eeffde; border-bottom-right-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg-time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; display: block; }
+        
+        /* Настройки (Модальное окно) */
+        #settings-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 300px; display: flex; flex-direction: column; gap: 10px; }
     </style>
 </head>
 <body>
 
-<div id="auth-screen">
-    <h2>Вход в Мессенджер</h2>
-    <input type="email" id="email" placeholder="Email (например: test@test.com)">
-    <input type="password" id="password" placeholder="Пароль (минимум 6 символов)">
-    <div style="display:flex; gap:10px;">
-        <button onclick="login()">Войти</button>
-        <button onclick="register()" style="background: #3498db;">Создать аккаунт</button>
-    </div>
-    <p id="auth-error" style="color: red; font-size: 12px;"></p>
+<div id="loading-screen">
+    <h2>Загрузка...</h2>
 </div>
 
-<div id="chat-screen">
-    <div id="header">
-        <span>Онлайн Чат</span>
-        <div>
-            <button class="btn-small" onclick="toggleProfile()">Профиль</button>
-            <button class="btn-small" onclick="logout()" style="background: #d32f2f;">Выйти</button>
+<div id="auth-screen" style="display: none;">
+    <h2>Telegram Clone</h2>
+    <div class="auth-box">
+        <input type="text" id="reg-username" placeholder="Уникальный @юзернейм (только латиница)">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Пароль">
+        <button onclick="register()">Зарегистрироваться</button>
+        <button onclick="login()" style="background: transparent; color: #3390ec; border: 1px solid #3390ec;">Уже есть аккаунт? Войти</button>
+        <p id="auth-error" style="color: red; font-size: 12px; text-align: center;"></p>
+    </div>
+</div>
+
+<div id="app-screen">
+    <div id="sidebar">
+        <div id="my-profile">
+            <span id="my-display-name" style="font-weight: bold;">...</span>
+            <button onclick="openSettings()" style="width: auto; padding: 5px 10px; font-size: 12px;">Настройки</button>
+        </div>
+        <div id="search-box">
+            <input type="text" id="search-input" placeholder="Поиск по @юзернейму..." oninput="searchUsers()">
+        </div>
+        <div id="user-list">
+            <div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Введите @юзернейм для поиска</div>
         </div>
     </div>
-    
-    <div id="profile-settings">
-        <input type="text" id="profileName" placeholder="Ваше отображаемое имя">
-        <input type="text" id="profileAvatar" placeholder="Ссылка на картинку (URL)">
-        <button onclick="saveProfile()">Сохранить настройки</button>
+
+    <div id="chat-area">
+        <div id="chat-header">
+            <span id="active-chat-name">Выберите чат</span>
+        </div>
+        <div id="messages-container"></div>
+        <div id="message-input-area" style="display: none;">
+            <input type="text" id="msg-input" placeholder="Написать сообщение...">
+            <button onclick="sendPrivateMessage()" style="width: auto; padding: 10px 20px;">Отправить</button>
+        </div>
     </div>
+</div>
 
-    <div id="chat-container"></div>
-
-    <div id="input-area">
-        <input type="text" id="messageInput" placeholder="Написать сообщение...">
-        <button onclick="sendMessage()">Отправить</button>
+<div id="settings-modal">
+    <div class="modal-content">
+        <h3>Настройки профиля</h3>
+        <label>Отображаемое имя:</label>
+        <input type="text" id="set-name">
+        <label>Ссылка на аватарку:</label>
+        <input type="text" id="set-avatar">
+        <button onclick="saveSettings()">Сохранить</button>
+        <button onclick="closeSettings()" style="background: #ccc; color: black;">Отмена</button>
+        <button onclick="logout()" style="background: #e74c3c; margin-top: 15px;">Выйти из аккаунта</button>
     </div>
 </div>
 
 <script type="module">
-  // Подключаем Firebase инструменты
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getDatabase, ref, push, onChildAdded, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, set, get, push, onChildAdded, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   // ==========================================
-  // ВСТАВЬТЕ СВОИ ДАННЫЕ СЮДА (ИЗ ШАГА 1.4)
+  // ВСТАВЬ ТВОИ КЛЮЧИ ИЗ СКРИНШОТА СЮДА
   // ==========================================
-  const firebaseConfig = {
-  apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
-  authDomain: "messenger-somik.firebaseapp.com",
-  databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "messenger-somik",
-  storageBucket: "messenger-somik.firebasestorage.app",
-  messagingSenderId: "332911583024",
-  appId: "1:332911583024:web:13d0715ef3994712cd72f5"
+ const firebaseConfig = {
+   apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
+   authDomain: "messenger-somik.firebaseapp.com",
+   databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
+   projectId: "messenger-somik",
+   storageBucket: "messenger-somik.firebasestorage.app",
+   messagingSenderId: "332911583024",
+   appId: "1:332911583024:web:13d0715ef3994712cd72f5"
 };
 
-  // Инициализация
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getDatabase(app);
 
-  // Глобальные переменные
+  // Фикс "сброса" при перезагрузке - жестко говорим браузеру хранить сессию
+  setPersistence(auth, browserLocalPersistence);
+
   let currentUser = null;
-  let userProfile = { name: "Аноним", avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" };
+  let myProfile = null;
+  let activeChatId = null;
+  let currentChatListener = null;
 
-  // Элементы интерфейса
-  const authScreen = document.getElementById('auth-screen');
-  const chatScreen = document.getElementById('chat-screen');
-  const chatContainer = document.getElementById('chat-container');
-  const errorMsg = document.getElementById('auth-error');
+  const UI = {
+      loading: document.getElementById('loading-screen'),
+      auth: document.getElementById('auth-screen'),
+      app: document.getElementById('app-screen'),
+      error: document.getElementById('auth-error'),
+      userList: document.getElementById('user-list'),
+      msgContainer: document.getElementById('messages-container'),
+      inputArea: document.getElementById('message-input-area'),
+      activeChatName: document.getElementById('active-chat-name')
+  };
 
-  // --- АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ ---
-  window.register = () => {
-    const e = document.getElementById('email').value;
-    const p = document.getElementById('password').value;
-    createUserWithEmailAndPassword(auth, e, p).catch(err => errorMsg.innerText = "Ошибка: " + err.message);
+  // --- АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ С @USERNAME ---
+  window.register = async () => {
+      const u = document.getElementById('reg-username').value.trim().toLowerCase();
+      const e = document.getElementById('email').value.trim();
+      const p = document.getElementById('password').value.trim();
+      
+      if(!u || !u.startsWith('@')) return UI.error.innerText = "Юзернейм должен начинаться с @";
+      
+      try {
+          // 1. Проверяем, занят ли юзернейм
+          const userCheck = await get(ref(db, 'usernames/' + u));
+          if(userCheck.exists()) return UI.error.innerText = "Этот @юзернейм уже занят!";
+          
+          // 2. Создаем аккаунт
+          const userCred = await createUserWithEmailAndPassword(auth, e, p);
+          const uid = userCred.user.uid;
+          
+          // 3. Бронируем юзернейм и создаем профиль
+          await set(ref(db, 'usernames/' + u), uid);
+          await set(ref(db, 'users/' + uid), {
+              username: u,
+              displayName: "Новый пользователь",
+              avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+          });
+      } catch(err) { UI.error.innerText = err.message; }
   };
 
   window.login = () => {
-    const e = document.getElementById('email').value;
-    const p = document.getElementById('password').value;
-    signInWithEmailAndPassword(auth, e, p).catch(err => errorMsg.innerText = "Ошибка: " + err.message);
+      const e = document.getElementById('email').value.trim();
+      const p = document.getElementById('password').value.trim();
+      signInWithEmailAndPassword(auth, e, p).catch(err => UI.error.innerText = "Ошибка входа");
   };
 
   window.logout = () => signOut(auth);
 
-  // Отслеживаем статус пользователя (Вошел / Вышел)
+  // --- ЗАГРУЗКА ДАННЫХ ПРИ ВХОДЕ ---
   onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      authScreen.style.display = 'none';
-      chatScreen.style.display = 'flex';
-      
-      // Загружаем профиль пользователя из базы
-      const profileRef = ref(db, 'users/' + user.uid);
-      const snapshot = await get(profileRef);
-      if (snapshot.exists()) {
-          userProfile = snapshot.val();
+      if (user) {
+          currentUser = user;
+          // Быстро грузим профиль
+          const snap = await get(ref(db, 'users/' + user.uid));
+          myProfile = snap.val();
+          
+          document.getElementById('my-display-name').innerText = myProfile.displayName;
+          
+          UI.loading.style.display = 'none';
+          UI.auth.style.display = 'none';
+          UI.app.style.display = 'flex';
+          closeSettings();
       } else {
-          // Если профиля нет (новая регистрация), создаем базовый
-          set(profileRef, userProfile);
+          currentUser = null;
+          UI.loading.style.display = 'none';
+          UI.auth.style.display = 'flex';
+          UI.app.style.display = 'none';
       }
-      
-      document.getElementById('profileName').value = userProfile.name;
-      document.getElementById('profileAvatar').value = userProfile.avatar;
-      
-    } else {
-      currentUser = null;
-      authScreen.style.display = 'flex';
-      chatScreen.style.display = 'none';
-      chatContainer.innerHTML = ''; // Очищаем чат при выходе
-    }
   });
 
-  // --- ПРОФИЛЬ ---
-  window.toggleProfile = () => {
-      const p = document.getElementById('profile-settings');
-      p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+  // --- ПОИСК ЛЮДЕЙ ПО @ЮЗЕРНЕЙМУ ---
+  window.searchUsers = async () => {
+      const query = document.getElementById('search-input').value.trim().toLowerCase();
+      if(!query || !query.startsWith('@')) {
+          UI.userList.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Введите @юзернейм полностью</div>';
+          return;
+      }
+
+      // Ищем точное совпадение юзернейма
+      const usernameSnap = await get(ref(db, 'usernames/' + query));
+      if(usernameSnap.exists()) {
+          const targetUid = usernameSnap.val();
+          if(targetUid === currentUser.uid) return; // Самого себя не показываем
+
+          const userSnap = await get(ref(db, 'users/' + targetUid));
+          const userData = userSnap.val();
+
+          UI.userList.innerHTML = `
+              <div class="user-item" onclick="openChat('${targetUid}', '${userData.displayName}')">
+                  <img src="${userData.avatar}" class="avatar">
+                  <div class="user-info">
+                      <span class="user-name">${userData.displayName}</span>
+                      <span class="user-nick">${userData.username}</span>
+                  </div>
+              </div>
+          `;
+      } else {
+          UI.userList.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Пользователь не найден</div>';
+      }
   };
 
-  window.saveProfile = () => {
-      userProfile.name = document.getElementById('profileName').value || "Аноним";
-      userProfile.avatar = document.getElementById('profileAvatar').value || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-      set(ref(db, 'users/' + currentUser.uid), userProfile);
-      toggleProfile();
-      alert("Профиль обновлен! Новые сообщения будут с этой аватаркой.");
-  };
+  // --- ПРИВАТНЫЕ ЧАТЫ ---
+  // Генерация уникального ID чата для двух людей
+  function getChatId(uid1, uid2) {
+      return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+  }
 
-  // --- ЧАТ ---
-  window.sendMessage = () => {
-    const input = document.getElementById('messageInput');
-    const text = input.value;
-    if (text.trim() !== "" && currentUser) {
-      // Сохраняем в сообщение текущее имя и аватарку
-      push(ref(db, 'messages'), { 
-          uid: currentUser.uid,
-          text: text, 
-          name: userProfile.name,
-          avatar: userProfile.avatar,
-          time: Date.now() 
+  window.openChat = (partnerUid, partnerName) => {
+      // Отключаем прослушку старого чата
+      if(currentChatListener && activeChatId) {
+          off(ref(db, 'chats/' + activeChatId));
+      }
+
+      activeChatId = getChatId(currentUser.uid, partnerUid);
+      UI.activeChatName.innerText = partnerName;
+      UI.msgContainer.innerHTML = ''; // Очищаем экран
+      UI.inputArea.style.display = 'flex';
+
+      // Грузим сообщения этого чата
+      currentChatListener = onChildAdded(ref(db, 'chats/' + activeChatId), (data) => {
+          const msg = data.val();
+          const isMine = msg.sender === currentUser.uid;
+          const time = new Date(msg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          
+          const div = document.createElement('div');
+          div.className = `msg-row ${isMine ? 'mine' : 'others'}`;
+          div.innerHTML = `
+              <div class="msg-bubble">
+                  ${msg.text}
+                  <span class="msg-time">${time}</span>
+              </div>
+          `;
+          UI.msgContainer.appendChild(div);
+          UI.msgContainer.scrollTop = UI.msgContainer.scrollHeight;
       });
-      input.value = "";
-    }
   };
 
-  // Добавляем отправку по Enter
-  document.getElementById('messageInput').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') window.sendMessage();
+  window.sendPrivateMessage = () => {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if(text !== "" && activeChatId) {
+          push(ref(db, 'chats/' + activeChatId), {
+              sender: currentUser.uid,
+              text: text,
+              time: Date.now()
+          });
+          input.value = "";
+      }
+  };
+
+  document.getElementById('msg-input').addEventListener('keypress', e => {
+      if(e.key === 'Enter') sendPrivateMessage();
   });
 
-  // Загрузка сообщений в реальном времени
-  onChildAdded(ref(db, 'messages'), (data) => {
-    if (!currentUser) return; // Если не авторизован, не рисуем
+  // --- НАСТРОЙКИ ---
+  window.openSettings = () => {
+      document.getElementById('set-name').value = myProfile.displayName;
+      document.getElementById('set-avatar').value = myProfile.avatar;
+      document.getElementById('settings-modal').style.display = 'flex';
+  };
+  
+  window.closeSettings = () => {
+      document.getElementById('settings-modal').style.display = 'none';
+  };
 
-    const msg = data.val();
-    const isMine = msg.uid === currentUser.uid;
-    
-    const wrapper = document.createElement('div');
-    wrapper.className = `msg-wrapper ${isMine ? 'mine' : 'others'}`;
-    
-    wrapper.innerHTML = `
-        <img src="${msg.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
-        <div class="message">
-            <div class="meta">${msg.name}</div>
-            ${msg.text}
-        </div>
-    `;
-    
-    chatContainer.appendChild(wrapper);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  });
+  window.saveSettings = async () => {
+      const newName = document.getElementById('set-name').value;
+      const newAvatar = document.getElementById('set-avatar').value;
+      
+      await set(ref(db, 'users/' + currentUser.uid + '/displayName'), newName);
+      await set(ref(db, 'users/' + currentUser.uid + '/avatar'), newAvatar);
+      
+      myProfile.displayName = newName;
+      myProfile.avatar = newAvatar;
+      document.getElementById('my-display-name').innerText = newName;
+      closeSettings();
+  };
 </script>
 
 </body>
