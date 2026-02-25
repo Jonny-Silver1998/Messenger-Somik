@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro-Messenger</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #e5ddd5; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Стили экранов */
+        #auth-screen, #profile-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 15px; background: white; }
+        #chat-screen { display: none; flex-direction: column; height: 100vh; }
+        
+        /* Шапка и настройки профиля в чате */
+        #header { background: #075e54; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        #profile-settings { display: none; background: #fff; padding: 15px; border-bottom: 1px solid #ccc; flex-direction: column; gap: 10px; }
+        
+        /* Инпуты и кнопки */
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 8px; width: 250px; outline: none; }
+        button { background: #128C7E; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #075e54; }
+        .btn-small { padding: 5px 10px; font-size: 12px; }
+        
+        /* Чат и сообщения */
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg-wrapper { display: flex; gap: 10px; align-items: flex-end; }
+        .msg-wrapper.mine { flex-direction: row-reverse; }
+        
+        .avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #ccc; }
+        .message { max-width: 60%; padding: 10px 14px; border-radius: 15px; font-size: 15px; position: relative; word-wrap: break-word; }
+        .mine .message { background: #dcf8c6; border-bottom-right-radius: 0; }
+        .others .message { background: white; border-bottom-left-radius: 0; }
+        .meta { font-size: 11px; color: gray; margin-bottom: 5px; font-weight: bold; }
+        
+        /* Ввод сообщения */
+        #input-area { background: #f0f0f0; padding: 15px; display: flex; gap: 10px; }
+        #input-area input { flex: 1; width: auto; border-radius: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <h2>Вход в Мессенджер</h2>
+    <input type="email" id="email" placeholder="Email (например: test@test.com)">
+    <input type="password" id="password" placeholder="Пароль (минимум 6 символов)">
+    <div style="display:flex; gap:10px;">
+        <button onclick="login()">Войти</button>
+        <button onclick="register()" style="background: #3498db;">Создать аккаунт</button>
+    </div>
+    <p id="auth-error" style="color: red; font-size: 12px;"></p>
+</div>
+
+<div id="chat-screen">
+    <div id="header">
+        <span>Онлайн Чат</span>
+        <div>
+            <button class="btn-small" onclick="toggleProfile()">Профиль</button>
+            <button class="btn-small" onclick="logout()" style="background: #d32f2f;">Выйти</button>
+        </div>
+    </div>
+    
+    <div id="profile-settings">
+        <input type="text" id="profileName" placeholder="Ваше отображаемое имя">
+        <input type="text" id="profileAvatar" placeholder="Ссылка на картинку (URL)">
+        <button onclick="saveProfile()">Сохранить настройки</button>
+    </div>
+
+    <div id="chat-container"></div>
+
+    <div id="input-area">
+        <input type="text" id="messageInput" placeholder="Написать сообщение...">
+        <button onclick="sendMessage()">Отправить</button>
+    </div>
+</div>
+
+<script type="module">
+  // Подключаем Firebase инструменты
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, push, onChildAdded, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  // ==========================================
+  // ВСТАВЬТЕ СВОИ ДАННЫЕ СЮДА (ИЗ ШАГА 1.4)
+  // ==========================================
+  const firebaseConfig = {
+  apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
+  authDomain: "messenger-somik.firebaseapp.com",
+  databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "messenger-somik",
+  storageBucket: "messenger-somik.firebasestorage.app",
+  messagingSenderId: "332911583024",
+  appId: "1:332911583024:web:13d0715ef3994712cd72f5"
+};
+
+  // Инициализация
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Глобальные переменные
+  let currentUser = null;
+  let userProfile = { name: "Аноним", avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" };
+
+  // Элементы интерфейса
+  const authScreen = document.getElementById('auth-screen');
+  const chatScreen = document.getElementById('chat-screen');
+  const chatContainer = document.getElementById('chat-container');
+  const errorMsg = document.getElementById('auth-error');
+
+  // --- АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ ---
+  window.register = () => {
+    const e = document.getElementById('email').value;
+    const p = document.getElementById('password').value;
+    createUserWithEmailAndPassword(auth, e, p).catch(err => errorMsg.innerText = "Ошибка: " + err.message);
+  };
+
+  window.login = () => {
+    const e = document.getElementById('email').value;
+    const p = document.getElementById('password').value;
+    signInWithEmailAndPassword(auth, e, p).catch(err => errorMsg.innerText = "Ошибка: " + err.message);
+  };
+
+  window.logout = () => signOut(auth);
+
+  // Отслеживаем статус пользователя (Вошел / Вышел)
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      authScreen.style.display = 'none';
+      chatScreen.style.display = 'flex';
+      
+      // Загружаем профиль пользователя из базы
+      const profileRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(profileRef);
+      if (snapshot.exists()) {
+          userProfile = snapshot.val();
+      } else {
+          // Если профиля нет (новая регистрация), создаем базовый
+          set(profileRef, userProfile);
+      }
+      
+      document.getElementById('profileName').value = userProfile.name;
+      document.getElementById('profileAvatar').value = userProfile.avatar;
+      
+    } else {
+      currentUser = null;
+      authScreen.style.display = 'flex';
+      chatScreen.style.display = 'none';
+      chatContainer.innerHTML = ''; // Очищаем чат при выходе
+    }
+  });
+
+  // --- ПРОФИЛЬ ---
+  window.toggleProfile = () => {
+      const p = document.getElementById('profile-settings');
+      p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+  };
+
+  window.saveProfile = () => {
+      userProfile.name = document.getElementById('profileName').value || "Аноним";
+      userProfile.avatar = document.getElementById('profileAvatar').value || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      set(ref(db, 'users/' + currentUser.uid), userProfile);
+      toggleProfile();
+      alert("Профиль обновлен! Новые сообщения будут с этой аватаркой.");
+  };
+
+  // --- ЧАТ ---
+  window.sendMessage = () => {
+    const input = document.getElementById('messageInput');
+    const text = input.value;
+    if (text.trim() !== "" && currentUser) {
+      // Сохраняем в сообщение текущее имя и аватарку
+      push(ref(db, 'messages'), { 
+          uid: currentUser.uid,
+          text: text, 
+          name: userProfile.name,
+          avatar: userProfile.avatar,
+          time: Date.now() 
+      });
+      input.value = "";
+    }
+  };
+
+  // Добавляем отправку по Enter
+  document.getElementById('messageInput').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') window.sendMessage();
+  });
+
+  // Загрузка сообщений в реальном времени
+  onChildAdded(ref(db, 'messages'), (data) => {
+    if (!currentUser) return; // Если не авторизован, не рисуем
+
+    const msg = data.val();
+    const isMine = msg.uid === currentUser.uid;
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg-wrapper ${isMine ? 'mine' : 'others'}`;
+    
+    wrapper.innerHTML = `
+        <img src="${msg.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+        <div class="message">
+            <div class="meta">${msg.name}</div>
+            ${msg.text}
+        </div>
+    `;
+    
+    chatContainer.appendChild(wrapper);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
