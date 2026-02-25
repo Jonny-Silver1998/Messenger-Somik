@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TG-Clone</title>
+    <title>TG-Clone (Fix)</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #e4eaf5; height: 100vh; display: flex; overflow: hidden; }
@@ -13,16 +13,21 @@
         #app-screen { display: none; width: 100%; height: 100vh; }
         
         /* Авторизация */
-        .auth-box { width: 300px; display: flex; flex-direction: column; gap: 10px; }
-        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; }
+        .auth-box { width: 320px; display: flex; flex-direction: column; gap: 12px; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .auth-box h3 { margin: 0 0 10px 0; text-align: center; color: #333; }
+        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; transition: 0.2s; }
+        input:focus { border-color: #3390ec; }
         button { background: #3390ec; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
         button:hover { background: #2b7bc5; }
+        .text-btn { background: transparent; color: #3390ec; padding: 5px; font-weight: normal; font-size: 14px; margin-top: 5px; }
+        .text-btn:hover { text-decoration: underline; background: transparent; }
+        .error-text { color: red; font-size: 13px; text-align: center; margin: 0; min-height: 15px; }
         
         /* Лейаут Telegram */
         #sidebar { width: 300px; background: white; border-right: 1px solid #dfe1e5; display: flex; flex-direction: column; }
         #chat-area { flex: 1; display: flex; flex-direction: column; background: #e4eaf5; }
         
-        /* Сайдбар (левая часть) */
+        /* Сайдбар */
         #my-profile { padding: 15px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         #search-box { padding: 10px; background: #f4f4f5; }
         #search-box input { width: 100%; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; background: #fff; }
@@ -35,7 +40,7 @@
         .user-name { font-weight: bold; font-size: 14px; }
         .user-nick { font-size: 12px; color: #888; }
 
-        /* Окно чата (правая часть) */
+        /* Окно чата */
         #chat-header { padding: 15px 20px; background: white; border-bottom: 1px solid #dfe1e5; font-weight: bold; display: flex; align-items: center; gap: 10px; }
         #messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         #message-input-area { padding: 15px; background: white; display: flex; gap: 10px; align-items: center; }
@@ -48,9 +53,10 @@
         .msg-row.mine .msg-bubble { background: #eeffde; border-bottom-right-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg-time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; display: block; }
         
-        /* Настройки (Модальное окно) */
+        /* Настройки */
         #settings-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 300px; display: flex; flex-direction: column; gap: 10px; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 320px; display: flex; flex-direction: column; gap: 10px; }
+        .modal-content h3 { margin-top: 0; }
     </style>
 </head>
 <body>
@@ -60,14 +66,23 @@
 </div>
 
 <div id="auth-screen" style="display: none;">
-    <h2>Telegram Clone</h2>
-    <div class="auth-box">
-        <input type="text" id="reg-username" placeholder="Уникальный @юзернейм (только латиница)">
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Пароль">
-        <button onclick="register()">Зарегистрироваться</button>
-        <button onclick="login()" style="background: transparent; color: #3390ec; border: 1px solid #3390ec;">Уже есть аккаунт? Войти</button>
-        <p id="auth-error" style="color: red; font-size: 12px; text-align: center;"></p>
+    <div class="auth-box" id="reg-box">
+        <h3>Регистрация</h3>
+        <input type="text" id="reg-username" placeholder="Уникальный @юзернейм">
+        <input type="email" id="reg-email" placeholder="Email">
+        <input type="password" id="reg-password" placeholder="Пароль (мин. 6 символов)">
+        <button onclick="register()">Создать аккаунт</button>
+        <button class="text-btn" onclick="toggleAuthMode('login')">Уже есть аккаунт? Войти</button>
+        <p id="reg-error" class="error-text"></p>
+    </div>
+
+    <div class="auth-box" id="login-box" style="display: none;">
+        <h3>Вход</h3>
+        <input type="email" id="log-email" placeholder="Email">
+        <input type="password" id="log-password" placeholder="Пароль">
+        <button onclick="login()">Войти</button>
+        <button class="text-btn" onclick="toggleAuthMode('register')">Нет аккаунта? Создать</button>
+        <p id="log-error" class="error-text"></p>
     </div>
 </div>
 
@@ -75,7 +90,7 @@
     <div id="sidebar">
         <div id="my-profile">
             <span id="my-display-name" style="font-weight: bold;">...</span>
-            <button onclick="openSettings()" style="width: auto; padding: 5px 10px; font-size: 12px;">Настройки</button>
+            <button onclick="openSettings()" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 20px;">Настройки</button>
         </div>
         <div id="search-box">
             <input type="text" id="search-input" placeholder="Поиск по @юзернейму..." oninput="searchUsers()">
@@ -99,40 +114,43 @@
 
 <div id="settings-modal">
     <div class="modal-content">
-        <h3>Настройки профиля</h3>
-        <label>Отображаемое имя:</label>
+        <h3>Настройки</h3>
+        <label style="font-size: 12px; color: #555;">Отображаемое имя:</label>
         <input type="text" id="set-name">
-        <label>Ссылка на аватарку:</label>
+        <label style="font-size: 12px; color: #555;">Ссылка на аватарку:</label>
         <input type="text" id="set-avatar">
-        <button onclick="saveSettings()">Сохранить</button>
-        <button onclick="closeSettings()" style="background: #ccc; color: black;">Отмена</button>
-        <button onclick="logout()" style="background: #e74c3c; margin-top: 15px;">Выйти из аккаунта</button>
+        
+        <button onclick="saveSettings()" style="margin-top: 10px;">Сохранить изменения</button>
+        <button onclick="closeSettings()" style="background: #e4eaf5; color: #333;">Отмена</button>
+        
+        <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+        
+        <button onclick="logout()" style="background: #f1c40f; color: black;">Выйти из аккаунта</button>
+        <button onclick="deleteAccount()" style="background: #e74c3c;">Удалить аккаунт навсегда</button>
     </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getDatabase, ref, set, get, push, onChildAdded, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, set, get, push, onChildAdded, remove, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   // ==========================================
   // ВСТАВЬ ТВОИ КЛЮЧИ ИЗ СКРИНШОТА СЮДА
   // ==========================================
- const firebaseConfig = {
-   apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
-   authDomain: "messenger-somik.firebaseapp.com",
-   databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
-   projectId: "messenger-somik",
-   storageBucket: "messenger-somik.firebasestorage.app",
-   messagingSenderId: "332911583024",
-   appId: "1:332911583024:web:13d0715ef3994712cd72f5"
-};
+  const firebaseConfig = {
+    apiKey: "ВСТАВИТЬ_СЮДА",
+    authDomain: "ВСТАВИТЬ_СЮДА",
+    databaseURL: "ВСТАВИТЬ_СЮДА",
+    projectId: "ВСТАВИТЬ_СЮДА",
+    storageBucket: "ВСТАВИТЬ_СЮДА",
+    messagingSenderId: "ВСТАВИТЬ_СЮДА",
+    appId: "ВСТАВИТЬ_СЮДА"
+  };
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getDatabase(app);
-
-  // Фикс "сброса" при перезагрузке - жестко говорим браузеру хранить сессию
   setPersistence(auth, browserLocalPersistence);
 
   let currentUser = null;
@@ -144,57 +162,104 @@
       loading: document.getElementById('loading-screen'),
       auth: document.getElementById('auth-screen'),
       app: document.getElementById('app-screen'),
-      error: document.getElementById('auth-error'),
-      userList: document.getElementById('user-list'),
-      msgContainer: document.getElementById('messages-container'),
-      inputArea: document.getElementById('message-input-area'),
-      activeChatName: document.getElementById('active-chat-name')
+      regBox: document.getElementById('reg-box'),
+      loginBox: document.getElementById('login-box'),
+      regError: document.getElementById('reg-error'),
+      logError: document.getElementById('log-error')
   };
 
-  // --- АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ С @USERNAME ---
+  // Переключение между входом и регистрацией
+  window.toggleAuthMode = (mode) => {
+      UI.regError.innerText = "";
+      UI.logError.innerText = "";
+      if (mode === 'login') {
+          UI.regBox.style.display = 'none';
+          UI.loginBox.style.display = 'flex';
+      } else {
+          UI.regBox.style.display = 'flex';
+          UI.loginBox.style.display = 'none';
+      }
+  };
+
+  // --- АВТОРИЗАЦИЯ ---
   window.register = async () => {
+      UI.regError.innerText = "Создание...";
       const u = document.getElementById('reg-username').value.trim().toLowerCase();
-      const e = document.getElementById('email').value.trim();
-      const p = document.getElementById('password').value.trim();
+      const e = document.getElementById('reg-email').value.trim();
+      const p = document.getElementById('reg-password').value.trim();
       
-      if(!u || !u.startsWith('@')) return UI.error.innerText = "Юзернейм должен начинаться с @";
+      if(!u || !u.startsWith('@')) return UI.regError.innerText = "Юзернейм должен начинаться с @";
       
       try {
-          // 1. Проверяем, занят ли юзернейм
           const userCheck = await get(ref(db, 'usernames/' + u));
-          if(userCheck.exists()) return UI.error.innerText = "Этот @юзернейм уже занят!";
+          if(userCheck.exists()) return UI.regError.innerText = "Этот @юзернейм уже занят!";
           
-          // 2. Создаем аккаунт
           const userCred = await createUserWithEmailAndPassword(auth, e, p);
           const uid = userCred.user.uid;
           
-          // 3. Бронируем юзернейм и создаем профиль
+          // Записываем данные в базу
           await set(ref(db, 'usernames/' + u), uid);
           await set(ref(db, 'users/' + uid), {
               username: u,
-              displayName: "Новый пользователь",
+              displayName: u, // по умолчанию имя = юзернейм
               avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
           });
-      } catch(err) { UI.error.innerText = err.message; }
+      } catch(err) { UI.regError.innerText = "Ошибка: " + err.message; }
   };
 
   window.login = () => {
-      const e = document.getElementById('email').value.trim();
-      const p = document.getElementById('password').value.trim();
-      signInWithEmailAndPassword(auth, e, p).catch(err => UI.error.innerText = "Ошибка входа");
+      UI.logError.innerText = "Вход...";
+      const e = document.getElementById('log-email').value.trim();
+      const p = document.getElementById('log-password').value.trim();
+      signInWithEmailAndPassword(auth, e, p).catch(err => UI.logError.innerText = "Неверный логин или пароль");
   };
 
   window.logout = () => signOut(auth);
 
-  // --- ЗАГРУЗКА ДАННЫХ ПРИ ВХОДЕ ---
+  // --- УДАЛЕНИЕ АККАУНТА ---
+  window.deleteAccount = async () => {
+      if(!confirm("Удалить аккаунт навсегда? Это освободит ваш @юзернейм, а переписки останутся у собеседников без вашего имени.")) return;
+      
+      try {
+          const uid = currentUser.uid;
+          const uname = myProfile.username;
+          
+          // Сначала удаляем данные из базы
+          await remove(ref(db, 'users/' + uid));
+          if(uname) await remove(ref(db, 'usernames/' + uname));
+          
+          // Затем удаляем сам аккаунт
+          await deleteUser(currentUser);
+          alert("Аккаунт успешно удален.");
+      } catch(err) {
+          if (err.code === 'auth/requires-recent-login') {
+              alert("В целях безопасности нужно выйти и зайти в аккаунт заново перед удалением.");
+          } else {
+              alert("Ошибка: " + err.message);
+          }
+      }
+  };
+
+  // --- СТАТУС ПОЛЬЗОВАТЕЛЯ И ФИКС ЗАГРУЗКИ ---
   onAuthStateChanged(auth, async (user) => {
       if (user) {
           currentUser = user;
-          // Быстро грузим профиль
-          const snap = await get(ref(db, 'users/' + user.uid));
-          myProfile = snap.val();
           
-          document.getElementById('my-display-name').innerText = myProfile.displayName;
+          // ФИКС: Ждем, пока регистрация допишет профиль в базу (до 3 секунд)
+          let snap = await get(ref(db, 'users/' + user.uid));
+          let attempts = 0;
+          while (!snap.exists() && attempts < 6) {
+              await new Promise(r => setTimeout(r, 500)); 
+              snap = await get(ref(db, 'users/' + user.uid));
+              attempts++;
+          }
+
+          if(snap.exists()) {
+              myProfile = snap.val();
+              document.getElementById('my-display-name').innerText = myProfile.displayName;
+          } else {
+              myProfile = { displayName: "Ошибка загрузки", avatar: "" };
+          }
           
           UI.loading.style.display = 'none';
           UI.auth.style.display = 'none';
@@ -202,32 +267,30 @@
           closeSettings();
       } else {
           currentUser = null;
+          myProfile = null;
           UI.loading.style.display = 'none';
           UI.auth.style.display = 'flex';
           UI.app.style.display = 'none';
       }
   });
 
-  // --- ПОИСК ЛЮДЕЙ ПО @ЮЗЕРНЕЙМУ ---
+  // --- ПОИСК И ЧАТЫ (остались без изменений) ---
   window.searchUsers = async () => {
       const query = document.getElementById('search-input').value.trim().toLowerCase();
-      if(!query || !query.startsWith('@')) {
-          UI.userList.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Введите @юзернейм полностью</div>';
-          return;
-      }
+      if(!query || !query.startsWith('@')) return document.getElementById('user-list').innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Введите @юзернейм полностью</div>';
 
-      // Ищем точное совпадение юзернейма
       const usernameSnap = await get(ref(db, 'usernames/' + query));
       if(usernameSnap.exists()) {
           const targetUid = usernameSnap.val();
-          if(targetUid === currentUser.uid) return; // Самого себя не показываем
+          if(targetUid === currentUser.uid) return; 
 
           const userSnap = await get(ref(db, 'users/' + targetUid));
+          if(!userSnap.exists()) return; // Если аккаунт удален, но юзернейм завис
+          
           const userData = userSnap.val();
-
-          UI.userList.innerHTML = `
+          document.getElementById('user-list').innerHTML = `
               <div class="user-item" onclick="openChat('${targetUid}', '${userData.displayName}')">
-                  <img src="${userData.avatar}" class="avatar">
+                  <img src="${userData.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
                   <div class="user-info">
                       <span class="user-name">${userData.displayName}</span>
                       <span class="user-nick">${userData.username}</span>
@@ -235,28 +298,20 @@
               </div>
           `;
       } else {
-          UI.userList.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Пользователь не найден</div>';
+          document.getElementById('user-list').innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Пользователь не найден</div>';
       }
   };
 
-  // --- ПРИВАТНЫЕ ЧАТЫ ---
-  // Генерация уникального ID чата для двух людей
-  function getChatId(uid1, uid2) {
-      return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
-  }
+  function getChatId(uid1, uid2) { return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`; }
 
   window.openChat = (partnerUid, partnerName) => {
-      // Отключаем прослушку старого чата
-      if(currentChatListener && activeChatId) {
-          off(ref(db, 'chats/' + activeChatId));
-      }
+      if(currentChatListener && activeChatId) off(ref(db, 'chats/' + activeChatId));
 
       activeChatId = getChatId(currentUser.uid, partnerUid);
-      UI.activeChatName.innerText = partnerName;
-      UI.msgContainer.innerHTML = ''; // Очищаем экран
-      UI.inputArea.style.display = 'flex';
+      document.getElementById('active-chat-name').innerText = partnerName;
+      document.getElementById('messages-container').innerHTML = '';
+      document.getElementById('message-input-area').style.display = 'flex';
 
-      // Грузим сообщения этого чата
       currentChatListener = onChildAdded(ref(db, 'chats/' + activeChatId), (data) => {
           const msg = data.val();
           const isMine = msg.sender === currentUser.uid;
@@ -270,8 +325,8 @@
                   <span class="msg-time">${time}</span>
               </div>
           `;
-          UI.msgContainer.appendChild(div);
-          UI.msgContainer.scrollTop = UI.msgContainer.scrollHeight;
+          document.getElementById('messages-container').appendChild(div);
+          document.getElementById('messages-container').scrollTop = document.getElementById('messages-container').scrollHeight;
       });
   };
 
@@ -279,18 +334,12 @@
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
       if(text !== "" && activeChatId) {
-          push(ref(db, 'chats/' + activeChatId), {
-              sender: currentUser.uid,
-              text: text,
-              time: Date.now()
-          });
+          push(ref(db, 'chats/' + activeChatId), { sender: currentUser.uid, text: text, time: Date.now() });
           input.value = "";
       }
   };
 
-  document.getElementById('msg-input').addEventListener('keypress', e => {
-      if(e.key === 'Enter') sendPrivateMessage();
-  });
+  document.getElementById('msg-input').addEventListener('keypress', e => { if(e.key === 'Enter') sendPrivateMessage(); });
 
   // --- НАСТРОЙКИ ---
   window.openSettings = () => {
@@ -299,9 +348,7 @@
       document.getElementById('settings-modal').style.display = 'flex';
   };
   
-  window.closeSettings = () => {
-      document.getElementById('settings-modal').style.display = 'none';
-  };
+  window.closeSettings = () => { document.getElementById('settings-modal').style.display = 'none'; };
 
   window.saveSettings = async () => {
       const newName = document.getElementById('set-name').value;
