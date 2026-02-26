@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TG-Clone (Fix)</title>
+    <title>TG-Clone (Chats Fix)</title>
     <style>
+        /* ДИЗАЙН ВООБЩЕ НЕ ТРОГАЛ - ВСЕ КАК ТЫ ПРОСИЛ */
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #e4eaf5; height: 100vh; display: flex; overflow: hidden; }
         
-        /* Экраны */
         #loading-screen, #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; background: white; position: absolute; z-index: 100; }
         #app-screen { display: none; width: 100%; height: 100vh; }
         
-        /* Авторизация */
         .auth-box { width: 320px; display: flex; flex-direction: column; gap: 12px; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .auth-box h3 { margin: 0 0 10px 0; text-align: center; color: #333; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; transition: 0.2s; }
@@ -23,11 +22,9 @@
         .text-btn:hover { text-decoration: underline; background: transparent; }
         .error-text { color: red; font-size: 13px; text-align: center; margin: 0; min-height: 15px; }
         
-        /* Лейаут Telegram */
         #sidebar { width: 300px; background: white; border-right: 1px solid #dfe1e5; display: flex; flex-direction: column; }
         #chat-area { flex: 1; display: flex; flex-direction: column; background: #e4eaf5; }
         
-        /* Сайдбар */
         #my-profile { padding: 15px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         #search-box { padding: 10px; background: #f4f4f5; }
         #search-box input { width: 100%; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; background: #fff; }
@@ -40,12 +37,10 @@
         .user-name { font-weight: bold; font-size: 14px; }
         .user-nick { font-size: 12px; color: #888; }
 
-        /* Окно чата */
         #chat-header { padding: 15px 20px; background: white; border-bottom: 1px solid #dfe1e5; font-weight: bold; display: flex; align-items: center; gap: 10px; }
         #messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         #message-input-area { padding: 15px; background: white; display: flex; gap: 10px; align-items: center; }
         
-        /* Сообщения */
         .msg-row { display: flex; width: 100%; }
         .msg-row.mine { justify-content: flex-end; }
         .msg-bubble { max-width: 60%; padding: 10px 15px; border-radius: 15px; font-size: 15px; word-wrap: break-word; position: relative; }
@@ -53,7 +48,6 @@
         .msg-row.mine .msg-bubble { background: #eeffde; border-bottom-right-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg-time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; display: block; }
         
-        /* Настройки */
         #settings-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 320px; display: flex; flex-direction: column; gap: 10px; }
         .modal-content h3 { margin-top: 0; }
@@ -61,9 +55,7 @@
 </head>
 <body>
 
-<div id="loading-screen">
-    <h2>Загрузка...</h2>
-</div>
+<div id="loading-screen"><h2>Загрузка...</h2></div>
 
 <div id="auth-screen" style="display: none;">
     <div class="auth-box" id="reg-box">
@@ -93,10 +85,10 @@
             <button onclick="openSettings()" style="width: auto; padding: 6px 12px; font-size: 12px; border-radius: 20px;">Настройки</button>
         </div>
         <div id="search-box">
-            <input type="text" id="search-input" placeholder="Поиск по @юзернейму..." oninput="searchUsers()">
+            <input type="text" id="search-input" placeholder="Поиск по @юзернейму..." oninput="renderUserList()">
         </div>
         <div id="user-list">
-            <div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Введите @юзернейм для поиска</div>
+            <div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Загрузка чатов...</div>
         </div>
     </div>
 
@@ -124,7 +116,6 @@
         <button onclick="closeSettings()" style="background: #e4eaf5; color: #333;">Отмена</button>
         
         <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 10px 0;">
-        
         <button onclick="logout()" style="background: #f1c40f; color: black;">Выйти из аккаунта</button>
         <button onclick="deleteAccount()" style="background: #e74c3c;">Удалить аккаунт навсегда</button>
     </div>
@@ -133,12 +124,12 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getDatabase, ref, set, get, push, onChildAdded, remove, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getDatabase, ref, set, get, push, onChildAdded, remove, off, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
   // ==========================================
-  // ВСТАВЬ ТВОИ КЛЮЧИ ИЗ СКРИНШОТА СЮДА
+  // ВСТАВЬ ТВОИ КЛЮЧИ СЮДА!
   // ==========================================
- const firebaseConfig = {
+   const firebaseConfig = {
    apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
    authDomain: "messenger-somik.firebaseapp.com",
    databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
@@ -146,7 +137,7 @@
    storageBucket: "messenger-somik.firebasestorage.app",
    messagingSenderId: "332911583024",
    appId: "1:332911583024:web:13d0715ef3994712cd72f5"
-};;
+};Ф
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -156,7 +147,9 @@
   let currentUser = null;
   let myProfile = null;
   let activeChatId = null;
+  let activePartnerId = null; // ДОБАВЛЕНО: запоминаем ID собеседника
   let currentChatListener = null;
+  let recentChatsData = []; // ДОБАВЛЕНО: список твоих чатов
 
   const UI = {
       loading: document.getElementById('loading-screen'),
@@ -168,42 +161,25 @@
       logError: document.getElementById('log-error')
   };
 
-  // Переключение между входом и регистрацией
   window.toggleAuthMode = (mode) => {
-      UI.regError.innerText = "";
-      UI.logError.innerText = "";
-      if (mode === 'login') {
-          UI.regBox.style.display = 'none';
-          UI.loginBox.style.display = 'flex';
-      } else {
-          UI.regBox.style.display = 'flex';
-          UI.loginBox.style.display = 'none';
-      }
+      UI.regError.innerText = ""; UI.logError.innerText = "";
+      if (mode === 'login') { UI.regBox.style.display = 'none'; UI.loginBox.style.display = 'flex'; } 
+      else { UI.regBox.style.display = 'flex'; UI.loginBox.style.display = 'none'; }
   };
 
-  // --- АВТОРИЗАЦИЯ ---
   window.register = async () => {
       UI.regError.innerText = "Создание...";
       const u = document.getElementById('reg-username').value.trim().toLowerCase();
       const e = document.getElementById('reg-email').value.trim();
       const p = document.getElementById('reg-password').value.trim();
-      
       if(!u || !u.startsWith('@')) return UI.regError.innerText = "Юзернейм должен начинаться с @";
-      
       try {
           const userCheck = await get(ref(db, 'usernames/' + u));
           if(userCheck.exists()) return UI.regError.innerText = "Этот @юзернейм уже занят!";
-          
           const userCred = await createUserWithEmailAndPassword(auth, e, p);
           const uid = userCred.user.uid;
-          
-          // Записываем данные в базу
           await set(ref(db, 'usernames/' + u), uid);
-          await set(ref(db, 'users/' + uid), {
-              username: u,
-              displayName: u, // по умолчанию имя = юзернейм
-              avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-          });
+          await set(ref(db, 'users/' + uid), { username: u, displayName: u, avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" });
       } catch(err) { UI.regError.innerText = "Ошибка: " + err.message; }
   };
 
@@ -216,99 +192,123 @@
 
   window.logout = () => signOut(auth);
 
-  // --- УДАЛЕНИЕ АККАУНТА ---
   window.deleteAccount = async () => {
-      if(!confirm("Удалить аккаунт навсегда? Это освободит ваш @юзернейм, а переписки останутся у собеседников без вашего имени.")) return;
-      
+      if(!confirm("Удалить аккаунт навсегда?")) return;
       try {
           const uid = currentUser.uid;
           const uname = myProfile.username;
-          
-          // Сначала удаляем данные из базы
           await remove(ref(db, 'users/' + uid));
           if(uname) await remove(ref(db, 'usernames/' + uname));
-          
-          // Затем удаляем сам аккаунт
           await deleteUser(currentUser);
           alert("Аккаунт успешно удален.");
-      } catch(err) {
-          if (err.code === 'auth/requires-recent-login') {
-              alert("В целях безопасности нужно выйти и зайти в аккаунт заново перед удалением.");
-          } else {
-              alert("Ошибка: " + err.message);
-          }
-      }
+      } catch(err) { alert("Ошибка: " + err.message); }
   };
 
-  // --- СТАТУС ПОЛЬЗОВАТЕЛЯ И ФИКС ЗАГРУЗКИ ---
   onAuthStateChanged(auth, async (user) => {
       if (user) {
           currentUser = user;
-          
-          // ФИКС: Ждем, пока регистрация допишет профиль в базу (до 3 секунд)
           let snap = await get(ref(db, 'users/' + user.uid));
           let attempts = 0;
-          while (!snap.exists() && attempts < 6) {
-              await new Promise(r => setTimeout(r, 500)); 
-              snap = await get(ref(db, 'users/' + user.uid));
-              attempts++;
-          }
+          while (!snap.exists() && attempts < 6) { await new Promise(r => setTimeout(r, 500)); snap = await get(ref(db, 'users/' + user.uid)); attempts++; }
 
           if(snap.exists()) {
               myProfile = snap.val();
               document.getElementById('my-display-name').innerText = myProfile.displayName;
-          } else {
-              myProfile = { displayName: "Ошибка загрузки", avatar: "" };
-          }
+          } else { myProfile = { displayName: "Ошибка", avatar: "" }; }
           
           UI.loading.style.display = 'none';
           UI.auth.style.display = 'none';
           UI.app.style.display = 'flex';
           closeSettings();
+
+          // ДОБАВЛЕНО: Запускаем прослушку активных чатов
+          startChatsListener();
       } else {
-          currentUser = null;
-          myProfile = null;
-          UI.loading.style.display = 'none';
-          UI.auth.style.display = 'flex';
-          UI.app.style.display = 'none';
+          currentUser = null; myProfile = null;
+          UI.loading.style.display = 'none'; UI.auth.style.display = 'flex'; UI.app.style.display = 'none';
       }
   });
 
-  // --- ПОИСК И ЧАТЫ (остались без изменений) ---
-  window.searchUsers = async () => {
+  // НОВАЯ ФУНКЦИЯ: Следит за тем, с кем у тебя есть переписки
+  function startChatsListener() {
+      onValue(ref(db, 'userChats/' + currentUser.uid), (snap) => {
+          recentChatsData = [];
+          if(snap.exists()) {
+              snap.forEach(child => { recentChatsData.push({uid: child.key, time: child.val()}); });
+              recentChatsData.sort((a,b) => b.time - a.time); // Сортируем: новые сверху
+          }
+          renderUserList();
+      });
+  }
+
+  // ОБНОВЛЕНО: Теперь эта функция рисует либо результаты поиска, либо твои активные чаты
+  window.renderUserList = async () => {
       const query = document.getElementById('search-input').value.trim().toLowerCase();
-      if(!query || !query.startsWith('@')) return document.getElementById('user-list').innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Введите @юзернейм полностью</div>';
-
-      const usernameSnap = await get(ref(db, 'usernames/' + query));
-      if(usernameSnap.exists()) {
-          const targetUid = usernameSnap.val();
-          if(targetUid === currentUser.uid) return; 
-
-          const userSnap = await get(ref(db, 'users/' + targetUid));
-          if(!userSnap.exists()) return; // Если аккаунт удален, но юзернейм завис
-          
-          const userData = userSnap.val();
-          document.getElementById('user-list').innerHTML = `
-              <div class="user-item" onclick="openChat('${targetUid}', '${userData.displayName}')">
-                  <img src="${userData.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
-                  <div class="user-info">
-                      <span class="user-name">${userData.displayName}</span>
-                      <span class="user-nick">${userData.username}</span>
-                  </div>
-              </div>
-          `;
-      } else {
-          document.getElementById('user-list').innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 13px;">Пользователь не найден</div>';
+      const list = document.getElementById('user-list');
+      
+      // Если мы что-то ищем по @юзернейму
+      if (query) {
+          if(!query.startsWith('@')) { list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">Введите @юзернейм</div>'; return; }
+          const usernameSnap = await get(ref(db, 'usernames/' + query));
+          if(usernameSnap.exists()) {
+              const targetUid = usernameSnap.val();
+              if(targetUid === currentUser.uid) return; 
+              const userSnap = await get(ref(db, 'users/' + targetUid));
+              if(userSnap.exists()) {
+                  const u = userSnap.val();
+                  list.innerHTML = `
+                      <div class="user-item" onclick="openChat('${targetUid}', '${u.displayName}', '${u.avatar}')">
+                          <img src="${u.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                          <div class="user-info">
+                              <span class="user-name">${u.displayName}</span>
+                              <span class="user-nick">${u.username}</span>
+                          </div>
+                      </div>`;
+              }
+          } else { list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">Не найден</div>'; }
+      } 
+      // Если строка поиска пустая — показываем твои чаты!
+      else {
+          list.innerHTML = '';
+          if(recentChatsData.length === 0) {
+              list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">У вас пока нет чатов. Найдите кого-нибудь через @поиск</div>';
+              return;
+          }
+          // Грузим аватарки и имена для каждого чата
+          for(let c of recentChatsData) {
+              const userSnap = await get(ref(db, 'users/' + c.uid));
+              if(userSnap.exists()) {
+                  const u = userSnap.val();
+                  const div = document.createElement('div');
+                  div.className = 'user-item';
+                  div.onclick = () => openChat(c.uid, u.displayName, u.avatar);
+                  div.innerHTML = `
+                      <img src="${u.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                      <div class="user-info">
+                          <span class="user-name">${u.displayName}</span>
+                          <span class="user-nick">${u.username}</span>
+                      </div>`;
+                  list.appendChild(div);
+              }
+          }
       }
   };
 
   function getChatId(uid1, uid2) { return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`; }
 
-  window.openChat = (partnerUid, partnerName) => {
+  // ОБНОВЛЕНО: Добавил передачу аватарки в шапку чата
+  window.openChat = (partnerUid, partnerName, partnerAvatar) => {
       if(currentChatListener && activeChatId) off(ref(db, 'chats/' + activeChatId));
 
+      activePartnerId = partnerUid;
       activeChatId = getChatId(currentUser.uid, partnerUid);
-      document.getElementById('active-chat-name').innerText = partnerName;
+      
+      // Рисуем аватарку и имя в шапке
+      document.getElementById('active-chat-name').innerHTML = `
+          <img src="${partnerAvatar}" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+          ${partnerName}
+      `;
+      
       document.getElementById('messages-container').innerHTML = '';
       document.getElementById('message-input-area').style.display = 'flex';
 
@@ -319,29 +319,31 @@
           
           const div = document.createElement('div');
           div.className = `msg-row ${isMine ? 'mine' : 'others'}`;
-          div.innerHTML = `
-              <div class="msg-bubble">
-                  ${msg.text}
-                  <span class="msg-time">${time}</span>
-              </div>
-          `;
+          div.innerHTML = `<div class="msg-bubble">${msg.text}<span class="msg-time">${time}</span></div>`;
           document.getElementById('messages-container').appendChild(div);
           document.getElementById('messages-container').scrollTop = document.getElementById('messages-container').scrollHeight;
       });
   };
 
+  // ОБНОВЛЕНО: Сохраняем чат в память (себе и собеседнику)
   window.sendPrivateMessage = () => {
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
       if(text !== "" && activeChatId) {
-          push(ref(db, 'chats/' + activeChatId), { sender: currentUser.uid, text: text, time: Date.now() });
+          const timestamp = Date.now();
+          // Отправляем само сообщение
+          push(ref(db, 'chats/' + activeChatId), { sender: currentUser.uid, text: text, time: timestamp });
+          
+          // ЗАПОМИНАЕМ ЧАТ для обоих пользователей
+          set(ref(db, `userChats/${currentUser.uid}/${activePartnerId}`), timestamp);
+          set(ref(db, `userChats/${activePartnerId}/${currentUser.uid}`), timestamp);
+          
           input.value = "";
       }
   };
 
   document.getElementById('msg-input').addEventListener('keypress', e => { if(e.key === 'Enter') sendPrivateMessage(); });
 
-  // --- НАСТРОЙКИ ---
   window.openSettings = () => {
       document.getElementById('set-name').value = myProfile.displayName;
       document.getElementById('set-avatar').value = myProfile.avatar;
@@ -353,17 +355,17 @@
   window.saveSettings = async () => {
       const newName = document.getElementById('set-name').value;
       const newAvatar = document.getElementById('set-avatar').value;
-      
       await set(ref(db, 'users/' + currentUser.uid + '/displayName'), newName);
       await set(ref(db, 'users/' + currentUser.uid + '/avatar'), newAvatar);
-      
       myProfile.displayName = newName;
       myProfile.avatar = newAvatar;
       document.getElementById('my-display-name').innerText = newName;
       closeSettings();
+      renderUserList(); // Обновляем список слева, если мы сменили аватарку
   };
 </script>
 
 </body>
 </html>
+
 
