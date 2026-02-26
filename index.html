@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TG-Clone (Chats Fix)</title>
+    <title>TG-Clone (Pro Version)</title>
     <style>
-        /* ДИЗАЙН ВООБЩЕ НЕ ТРОГАЛ - ВСЕ КАК ТЫ ПРОСИЛ */
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #e4eaf5; height: 100vh; display: flex; overflow: hidden; }
         
@@ -16,6 +15,7 @@
         .auth-box h3 { margin: 0 0 10px 0; text-align: center; color: #333; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; transition: 0.2s; }
         input:focus { border-color: #3390ec; }
+        input[type="checkbox"] { width: auto; transform: scale(1.2); cursor: pointer; }
         button { background: #3390ec; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
         button:hover { background: #2b7bc5; }
         .text-btn { background: transparent; color: #3390ec; padding: 5px; font-weight: normal; font-size: 14px; margin-top: 5px; }
@@ -23,7 +23,7 @@
         .error-text { color: red; font-size: 13px; text-align: center; margin: 0; min-height: 15px; }
         
         #sidebar { width: 300px; background: white; border-right: 1px solid #dfe1e5; display: flex; flex-direction: column; }
-        #chat-area { flex: 1; display: flex; flex-direction: column; background: #e4eaf5; }
+        #chat-area { flex: 1; display: flex; flex-direction: column; background: #e4eaf5; position: relative; }
         
         #my-profile { padding: 15px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         #search-box { padding: 10px; background: #f4f4f5; }
@@ -37,7 +37,7 @@
         .user-name { font-weight: bold; font-size: 14px; }
         .user-nick { font-size: 12px; color: #888; }
 
-        #chat-header { padding: 15px 20px; background: white; border-bottom: 1px solid #dfe1e5; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        #chat-header { padding: 15px 20px; background: white; border-bottom: 1px solid #dfe1e5; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
         #messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         #message-input-area { padding: 15px; background: white; display: flex; gap: 10px; align-items: center; }
         
@@ -48,9 +48,10 @@
         .msg-row.mine .msg-bubble { background: #eeffde; border-bottom-right-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg-time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; display: block; }
         
-        #settings-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 320px; display: flex; flex-direction: column; gap: 10px; }
-        .modal-content h3 { margin-top: 0; }
+        .modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 340px; display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow-y: auto; }
+        .modal-content h3 { margin-top: 0; margin-bottom: 5px; }
+        .modal-label { font-size: 12px; color: #555; margin-bottom: -5px; }
     </style>
 </head>
 <body>
@@ -60,7 +61,7 @@
 <div id="auth-screen" style="display: none;">
     <div class="auth-box" id="reg-box">
         <h3>Регистрация</h3>
-        <input type="text" id="reg-username" placeholder="Уникальный @юзернейм">
+        <input type="text" id="reg-username" placeholder="Уникальный @юзернейм (для поиска)">
         <input type="email" id="reg-email" placeholder="Email">
         <input type="password" id="reg-password" placeholder="Пароль (мин. 6 символов)">
         <button onclick="register()">Создать аккаунт</button>
@@ -94,25 +95,48 @@
 
     <div id="chat-area">
         <div id="chat-header">
-            <span id="active-chat-name">Выберите чат</span>
+            <div id="active-chat-info" style="display: flex; align-items: center; gap: 10px;">
+                <span id="active-chat-name">Выберите чат слева</span>
+            </div>
+            <button id="chat-options-btn" style="display: none; width: auto; padding: 6px 12px; font-size: 12px; border-radius: 8px; background: #f0f2f5; color: #333;" onclick="openChatOptions()">Действия</button>
         </div>
         <div id="messages-container"></div>
         <div id="message-input-area" style="display: none;">
             <input type="text" id="msg-input" placeholder="Написать сообщение...">
             <button onclick="sendPrivateMessage()" style="width: auto; padding: 10px 20px;">Отправить</button>
         </div>
+        
+        <div id="chat-options-modal" class="modal">
+            <div class="modal-content">
+                <h3>Действия с пользователем</h3>
+                <button onclick="toggleAvatarAccess()" style="background: #34495e;">Разрешить/Запретить видеть мою основу аватарку</button>
+                <button onclick="toggleBlock()" style="background: #e67e22;">Заблокировать / Разблокировать</button>
+                <button onclick="clearChat()" style="background: #95a5a6;">Очистить переписку</button>
+                <button onclick="deleteChat()" style="background: #e74c3c;">Удалить чат</button>
+                <button onclick="closeChatOptions()" style="background: #e4eaf5; color: #333; margin-top: 5px;">Закрыть</button>
+            </div>
+        </div>
     </div>
 </div>
 
-<div id="settings-modal">
+<div id="settings-modal" class="modal">
     <div class="modal-content">
         <h3>Настройки</h3>
-        <label style="font-size: 12px; color: #555;">Отображаемое имя:</label>
+        
+        <label class="modal-label">Имя пользователя (Отображаемое везде):</label>
         <input type="text" id="set-name">
-        <label style="font-size: 12px; color: #555;">Ссылка на аватарку:</label>
+        
+        <label class="modal-label">Основная (приватная) аватарка (ссылка):</label>
         <input type="text" id="set-avatar">
         
-        <button onclick="saveSettings()" style="margin-top: 10px;">Сохранить изменения</button>
+        <label class="modal-label">Публичная аватарка (для всех остальных):</label>
+        <input type="text" id="set-public-avatar" placeholder="Оставьте пустым для стандартной">
+        
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 10px; cursor: pointer;">
+            <input type="checkbox" id="set-search-hidden"> Скрыть мой @юзернейм из поиска
+        </label>
+        
+        <button onclick="saveSettings()" style="margin-top: 15px;">Сохранить изменения</button>
         <button onclick="closeSettings()" style="background: #e4eaf5; color: #333;">Отмена</button>
         
         <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 10px 0;">
@@ -123,21 +147,20 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  // Добавил EmailAuthProvider и reauthenticateWithCredential для фикса ошибки удаления
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getDatabase, ref, set, get, push, onChildAdded, remove, off, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  // ==========================================
-  // ВСТАВЬ ТВОИ КЛЮЧИ СЮДА!
-  // ==========================================
- const firebaseConfig = {
-   apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
-   authDomain: "messenger-somik.firebaseapp.com",
-   databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
-   projectId: "messenger-somik",
-   storageBucket: "messenger-somik.firebasestorage.app",
-   messagingSenderId: "332911583024",
-   appId: "1:332911583024:web:13d0715ef3994712cd72f5"
-};
+  // ТВOЙ КОНФИГ УЖЕ ВШИТ
+  const firebaseConfig = {
+    apiKey: "AIzaSyBuGjs02jnhD-pn4t_6cfgyIR2vn2O9l7c",
+    authDomain: "messenger-somik.firebaseapp.com",
+    databaseURL: "https://messenger-somik-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "messenger-somik",
+    storageBucket: "messenger-somik.firebasestorage.app",
+    messagingSenderId: "332911583024",
+    appId: "1:332911583024:web:13d0715ef3994712cd72f5"
+  };
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -147,9 +170,9 @@
   let currentUser = null;
   let myProfile = null;
   let activeChatId = null;
-  let activePartnerId = null; // ДОБАВЛЕНО: запоминаем ID собеседника
+  let activePartnerId = null; 
   let currentChatListener = null;
-  let recentChatsData = []; // ДОБАВЛЕНО: список твоих чатов
+  let recentChatsData = []; 
 
   const UI = {
       loading: document.getElementById('loading-screen'),
@@ -179,7 +202,8 @@
           const userCred = await createUserWithEmailAndPassword(auth, e, p);
           const uid = userCred.user.uid;
           await set(ref(db, 'usernames/' + u), uid);
-          await set(ref(db, 'users/' + uid), { username: u, displayName: u, avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" });
+          // По умолчанию публичная аватарка пустая (будет стандартной)
+          await set(ref(db, 'users/' + uid), { username: u, displayName: u, avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png", publicAvatar: "", searchHidden: false });
       } catch(err) { UI.regError.innerText = "Ошибка: " + err.message; }
   };
 
@@ -192,8 +216,9 @@
 
   window.logout = () => signOut(auth);
 
+  // ФИКС УДАЛЕНИЯ: Теперь запрашивает пароль если сессия устарела
   window.deleteAccount = async () => {
-      if(!confirm("Удалить аккаунт навсегда?")) return;
+      if(!confirm("Удалить аккаунт навсегда? Это действие необратимо.")) return;
       try {
           const uid = currentUser.uid;
           const uname = myProfile.username;
@@ -201,7 +226,19 @@
           if(uname) await remove(ref(db, 'usernames/' + uname));
           await deleteUser(currentUser);
           alert("Аккаунт успешно удален.");
-      } catch(err) { alert("Ошибка: " + err.message); }
+      } catch(err) { 
+          if(err.code === 'auth/requires-recent-login') {
+              const pass = prompt("В целях безопасности введите ваш пароль для удаления аккаунта:");
+              if(pass) {
+                  try {
+                      const credential = EmailAuthProvider.credential(currentUser.email, pass);
+                      await reauthenticateWithCredential(currentUser, credential);
+                      await deleteUser(currentUser);
+                      alert("Аккаунт успешно удален.");
+                  } catch(e) { alert("Неверный пароль. Аккаунт не удален."); }
+              }
+          } else { alert("Ошибка: " + err.message); }
+      }
   };
 
   onAuthStateChanged(auth, async (user) => {
@@ -220,8 +257,6 @@
           UI.auth.style.display = 'none';
           UI.app.style.display = 'flex';
           closeSettings();
-
-          // ДОБАВЛЕНО: Запускаем прослушку активных чатов
           startChatsListener();
       } else {
           currentUser = null; myProfile = null;
@@ -229,24 +264,37 @@
       }
   });
 
-  // НОВАЯ ФУНКЦИЯ: Следит за тем, с кем у тебя есть переписки
   function startChatsListener() {
       onValue(ref(db, 'userChats/' + currentUser.uid), (snap) => {
           recentChatsData = [];
           if(snap.exists()) {
               snap.forEach(child => { recentChatsData.push({uid: child.key, time: child.val()}); });
-              recentChatsData.sort((a,b) => b.time - a.time); // Сортируем: новые сверху
+              recentChatsData.sort((a,b) => b.time - a.time);
           }
           renderUserList();
       });
   }
 
-  // ОБНОВЛЕНО: Теперь эта функция рисует либо результаты поиска, либо твои активные чаты
+  // Вспомогательная функция для получения правильной аватарки
+  async function getDisplayAvatar(targetUid, uData) {
+      let defaultIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      let displayAvatar = uData.publicAvatar || defaultIcon; // Сначала показываем публичную
+      
+      // Если это ты сам - показывай основу
+      if(targetUid === currentUser.uid) return uData.avatar || defaultIcon;
+
+      // Проверяем, дал ли пользователь нам доступ к основной аватарке
+      const accessSnap = await get(ref(db, `avatarAccess/${targetUid}/${currentUser.uid}`));
+      if(accessSnap.exists()) {
+          displayAvatar = uData.avatar || defaultIcon;
+      }
+      return displayAvatar;
+  }
+
   window.renderUserList = async () => {
       const query = document.getElementById('search-input').value.trim().toLowerCase();
       const list = document.getElementById('user-list');
       
-      // Если мы что-то ищем по @юзернейму
       if (query) {
           if(!query.startsWith('@')) { list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">Введите @юзернейм</div>'; return; }
           const usernameSnap = await get(ref(db, 'usernames/' + query));
@@ -256,9 +304,16 @@
               const userSnap = await get(ref(db, 'users/' + targetUid));
               if(userSnap.exists()) {
                   const u = userSnap.val();
+                  // ПРОВЕРКА НА СКРЫТИЕ ИЗ ПОИСКА
+                  if(u.searchHidden) {
+                      list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">Не найден</div>';
+                      return;
+                  }
+                  const avatarToShow = await getDisplayAvatar(targetUid, u);
+                  
                   list.innerHTML = `
-                      <div class="user-item" onclick="openChat('${targetUid}', '${u.displayName}', '${u.avatar}')">
-                          <img src="${u.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                      <div class="user-item" onclick="openChat('${targetUid}', '${u.displayName}', '${avatarToShow}')">
+                          <img src="${avatarToShow}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
                           <div class="user-info">
                               <span class="user-name">${u.displayName}</span>
                               <span class="user-nick">${u.username}</span>
@@ -267,26 +322,22 @@
               }
           } else { list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">Не найден</div>'; }
       } 
-      // Если строка поиска пустая — показываем твои чаты!
       else {
           list.innerHTML = '';
-          if(recentChatsData.length === 0) {
-              list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">У вас пока нет чатов. Найдите кого-нибудь через @поиск</div>';
-              return;
-          }
-          // Грузим аватарки и имена для каждого чата
+          if(recentChatsData.length === 0) { list.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:13px;">У вас пока нет чатов</div>'; return; }
+          
           for(let c of recentChatsData) {
               const userSnap = await get(ref(db, 'users/' + c.uid));
               if(userSnap.exists()) {
                   const u = userSnap.val();
+                  const avatarToShow = await getDisplayAvatar(c.uid, u);
                   const div = document.createElement('div');
                   div.className = 'user-item';
-                  div.onclick = () => openChat(c.uid, u.displayName, u.avatar);
+                  div.onclick = () => openChat(c.uid, u.displayName, avatarToShow);
                   div.innerHTML = `
-                      <img src="${u.avatar}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                      <img src="${avatarToShow}" class="avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
                       <div class="user-info">
                           <span class="user-name">${u.displayName}</span>
-                          <span class="user-nick">${u.username}</span>
                       </div>`;
                   list.appendChild(div);
               }
@@ -296,19 +347,18 @@
 
   function getChatId(uid1, uid2) { return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`; }
 
-  // ОБНОВЛЕНО: Добавил передачу аватарки в шапку чата
   window.openChat = (partnerUid, partnerName, partnerAvatar) => {
       if(currentChatListener && activeChatId) off(ref(db, 'chats/' + activeChatId));
 
       activePartnerId = partnerUid;
       activeChatId = getChatId(currentUser.uid, partnerUid);
       
-      // Рисуем аватарку и имя в шапке
-      document.getElementById('active-chat-name').innerHTML = `
+      document.getElementById('active-chat-info').innerHTML = `
           <img src="${partnerAvatar}" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
           ${partnerName}
       `;
-      
+      // Показываем кнопку Действия
+      document.getElementById('chat-options-btn').style.display = 'block';
       document.getElementById('messages-container').innerHTML = '';
       document.getElementById('message-input-area').style.display = 'flex';
 
@@ -325,28 +375,84 @@
       });
   };
 
-  // ОБНОВЛЕНО: Сохраняем чат в память (себе и собеседнику)
-  window.sendPrivateMessage = () => {
+  // ПРОВЕРКА БЛОКИРОВОК ПЕРЕД ОТПРАВКОЙ
+  window.sendPrivateMessage = async () => {
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
       if(text !== "" && activeChatId) {
-          const timestamp = Date.now();
-          // Отправляем само сообщение
-          push(ref(db, 'chats/' + activeChatId), { sender: currentUser.uid, text: text, time: timestamp });
+          // Проверяем, не заблокировал ли он нас
+          const blockSnap1 = await get(ref(db, `blocks/${activePartnerId}/${currentUser.uid}`));
+          if(blockSnap1.exists()) { alert("Этот пользователь ограничил вам доступ."); return; }
           
-          // ЗАПОМИНАЕМ ЧАТ для обоих пользователей
+          // Проверяем, не заблокировали ли мы его
+          const blockSnap2 = await get(ref(db, `blocks/${currentUser.uid}/${activePartnerId}`));
+          if(blockSnap2.exists()) { alert("Вы заблокировали этого пользователя. Разблокируйте в Действиях."); return; }
+
+          const timestamp = Date.now();
+          push(ref(db, 'chats/' + activeChatId), { sender: currentUser.uid, text: text, time: timestamp });
           set(ref(db, `userChats/${currentUser.uid}/${activePartnerId}`), timestamp);
           set(ref(db, `userChats/${activePartnerId}/${currentUser.uid}`), timestamp);
-          
           input.value = "";
       }
   };
 
   document.getElementById('msg-input').addEventListener('keypress', e => { if(e.key === 'Enter') sendPrivateMessage(); });
 
+  // --- НОВЫЕ ФУНКЦИИ (ДЕЙСТВИЯ С ЧАТОМ) ---
+  window.openChatOptions = () => { document.getElementById('chat-options-modal').style.display = 'flex'; };
+  window.closeChatOptions = () => { document.getElementById('chat-options-modal').style.display = 'none'; };
+
+  window.clearChat = async () => {
+      if(confirm("Очистить историю сообщений? У собеседника она тоже удалится.")) {
+          await remove(ref(db, 'chats/' + activeChatId));
+          document.getElementById('messages-container').innerHTML = '';
+          closeChatOptions();
+      }
+  };
+
+  window.deleteChat = async () => {
+      if(confirm("Точно удалить чат?")) {
+          await remove(ref(db, 'chats/' + activeChatId));
+          await remove(ref(db, `userChats/${currentUser.uid}/${activePartnerId}`));
+          document.getElementById('active-chat-info').innerHTML = '<span id="active-chat-name">Выберите чат слева</span>';
+          document.getElementById('chat-options-btn').style.display = 'none';
+          document.getElementById('message-input-area').style.display = 'none';
+          document.getElementById('messages-container').innerHTML = '';
+          closeChatOptions();
+          renderUserList();
+      }
+  };
+
+  window.toggleBlock = async () => {
+      const snap = await get(ref(db, `blocks/${currentUser.uid}/${activePartnerId}`));
+      if(snap.exists()) {
+          await remove(ref(db, `blocks/${currentUser.uid}/${activePartnerId}`));
+          alert("Пользователь разблокирован!");
+      } else {
+          await set(ref(db, `blocks/${currentUser.uid}/${activePartnerId}`), true);
+          alert("Пользователь заблокирован!");
+      }
+      closeChatOptions();
+  };
+
+  window.toggleAvatarAccess = async () => {
+      const snap = await get(ref(db, `avatarAccess/${currentUser.uid}/${activePartnerId}`));
+      if(snap.exists()) {
+          await remove(ref(db, `avatarAccess/${currentUser.uid}/${activePartnerId}`));
+          alert("Доступ к основной аватарке закрыт. Теперь он видит вашу публичную аватарку.");
+      } else {
+          await set(ref(db, `avatarAccess/${currentUser.uid}/${activePartnerId}`), true);
+          alert("Доступ к основной аватарке открыт для этого пользователя.");
+      }
+      closeChatOptions();
+  };
+
+  // --- НАСТРОЙКИ ---
   window.openSettings = () => {
-      document.getElementById('set-name').value = myProfile.displayName;
-      document.getElementById('set-avatar').value = myProfile.avatar;
+      document.getElementById('set-name').value = myProfile.displayName || "";
+      document.getElementById('set-avatar').value = myProfile.avatar || "";
+      document.getElementById('set-public-avatar').value = myProfile.publicAvatar || "";
+      document.getElementById('set-search-hidden').checked = myProfile.searchHidden || false;
       document.getElementById('settings-modal').style.display = 'flex';
   };
   
@@ -355,18 +461,24 @@
   window.saveSettings = async () => {
       const newName = document.getElementById('set-name').value;
       const newAvatar = document.getElementById('set-avatar').value;
+      const newPublicAvatar = document.getElementById('set-public-avatar').value;
+      const newSearchHidden = document.getElementById('set-search-hidden').checked;
+      
       await set(ref(db, 'users/' + currentUser.uid + '/displayName'), newName);
       await set(ref(db, 'users/' + currentUser.uid + '/avatar'), newAvatar);
+      await set(ref(db, 'users/' + currentUser.uid + '/publicAvatar'), newPublicAvatar);
+      await set(ref(db, 'users/' + currentUser.uid + '/searchHidden'), newSearchHidden);
+      
       myProfile.displayName = newName;
       myProfile.avatar = newAvatar;
+      myProfile.publicAvatar = newPublicAvatar;
+      myProfile.searchHidden = newSearchHidden;
+      
       document.getElementById('my-display-name').innerText = newName;
       closeSettings();
-      renderUserList(); // Обновляем список слева, если мы сменили аватарку
+      renderUserList(); 
   };
 </script>
 
 </body>
 </html>
-
-
-
